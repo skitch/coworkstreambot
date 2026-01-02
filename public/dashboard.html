@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Co-Work Console</title>
+        <style>
+            body {
+                background: #121212;
+                color: white;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+            }
+            .container {
+                width: 100%;
+                max-width: 400px;
+                padding: 20px;
+            }
+            /* Login Form */
+            #login-screen {
+                background: #1e1e1e;
+                padding: 30px;
+                border-radius: 12px;
+                text-align: center;
+            }
+            input {
+                width: 100%;
+                padding: 12px;
+                margin: 10px 0;
+                background: #2d2d2d;
+                border: 1px solid #333;
+                color: white;
+                border-radius: 6px;
+                box-sizing: border-box;
+            }
+            /* Dashboard Grid */
+            #dashboard-screen {
+                display: none;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+            }
+            .card {
+                background: #1e1e1e;
+                padding: 20px;
+                border-radius: 12px;
+                text-align: center;
+            }
+            h2 {
+                margin-top: 0;
+                color: #888;
+                font-size: 0.9rem;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            button {
+                width: 100%;
+                padding: 15px;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: transform 0.1s;
+                margin-bottom: 10px;
+            }
+            button:active {
+                transform: scale(0.98);
+            }
+
+            .btn-focus {
+                background: #ff69b4;
+                color: black;
+            }
+            .btn-break {
+                background: #50fa7b;
+                color: black;
+            }
+            .btn-pause {
+                background: #ffb86c;
+                color: black;
+            }
+            .btn-secondary {
+                background: #333;
+                color: white;
+            }
+
+            .status-pill {
+                background: #000;
+                padding: 5px 10px;
+                border-radius: 20px;
+                font-family: monospace;
+                color: #ff69b4;
+            }
+
+            .btn-resume {
+                background: #8be9fd;
+                color: black;
+            }
+
+            /* Theme Buttons */
+            .theme-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                margin-bottom: 15px;
+            }
+            .btn-theme {
+                height: 40px;
+                padding: 0;
+                border-radius: 50%;
+                border: 2px solid transparent;
+                cursor: pointer;
+                transition: transform 0.2s;
+            }
+            .btn-theme:hover {
+                transform: scale(1.1);
+            }
+
+            .t-pink {
+                background: #ff69b4;
+            }
+            .t-blue {
+                background: #00d2ff;
+            }
+            .t-purple {
+                background: #bd93f9;
+            }
+            .t-gold {
+                background: #ffb86c;
+            }
+
+            /* Layout Buttons */
+            .layout-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .btn-layout {
+                background: #333;
+                color: #ccc;
+                font-size: 0.8rem;
+                padding: 10px;
+            }
+            .btn-layout:hover {
+                background: #444;
+                color: white;
+            }
+
+            /* Active States */
+            .btn-theme.active {
+                border: 3px solid white;
+                transform: scale(1.15);
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            }
+
+            .btn-layout.active {
+                background: white;
+                color: black;
+                font-weight: bold;
+                border: 1px solid white;
+            }
+
+            .btn-danger {
+                background: #ff5555;
+                color: white;
+                margin-top: 10px;
+            }
+            .btn-danger:hover {
+                background: #ff3333;
+            }
+
+            .block-list {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 10px;
+            }
+            .block-pill {
+                background: #330000;
+                border: 1px solid #ff5555;
+                color: #ffaaaa;
+                padding: 5px 10px;
+                border-radius: 15px;
+                font-size: 0.8rem;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .block-pill button {
+                background: none;
+                border: none;
+                color: white;
+                font-weight: bold;
+                cursor: pointer;
+                padding: 0;
+                margin: 0;
+                width: auto;
+                font-size: 1rem;
+                line-height: 1;
+            }
+            .block-pill button:hover {
+                color: #ff5555;
+                transform: scale(1.2);
+            }
+
+            /* --- Header Styles --- */
+            .dash-header {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                margin-bottom: 20px;
+                background: #1e1e1e;
+                padding: 15px;
+                border-radius: 12px;
+                border-bottom: 2px solid #333;
+            }
+
+            .user-info {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 0.9rem;
+                color: #aaa;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            .url-box {
+                display: flex;
+                gap: 5px;
+                background: #121212;
+                padding: 5px;
+                border-radius: 6px;
+                border: 1px solid #333;
+            }
+
+            .url-text {
+                flex-grow: 1;
+                background: transparent;
+                border: none;
+                color: #666;
+                font-family: monospace;
+                font-size: 0.8rem;
+                padding: 5px;
+                outline: none;
+            }
+
+            .btn-copy {
+                background: #333;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 10px;
+                cursor: pointer;
+                font-size: 0.75rem;
+                width: auto;
+                margin: 0;
+            }
+            .btn-copy:hover {
+                background: #555;
+            }
+
+            .btn-logout {
+                background: transparent;
+                border: 1px solid #555;
+                color: #888;
+                padding: 4px 10px;
+                border-radius: 4px;
+                font-size: 0.7rem;
+                cursor: pointer;
+                width: auto;
+                margin: 0;
+            }
+            .btn-logout:hover {
+                color: white;
+                border-color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="login-screen" class="container">
+            <h1>🔐 Console Login</h1>
+            <input type="text" id="channel-input" placeholder="Channel Name" />
+            <input type="password" id="password-input" placeholder="Password" />
+            <button class="btn-focus" onclick="login()">
+                Access Dashboard
+            </button>
+            <p id="error-msg" style="color: tomato; display: none"></p>
+        </div>
+
+        <div id="dashboard-screen" class="container">
+            <div class="dash-header">
+                <div class="user-info">
+                    <span id="header-username">LOGGED IN AS: ...</span>
+                    <button class="btn-logout" onclick="location.reload()">
+                        LOGOUT
+                    </button>
+                </div>
+                <div class="url-box">
+                    <input
+                        type="text"
+                        id="overlay-url"
+                        class="url-text"
+                        readonly
+                        value="..."
+                    />
+                    <button class="btn-copy" onclick="copyUrl()">
+                        COPY URL
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 20px">
+                <h2>Current Status</h2>
+                <div
+                    style="font-size: 3rem; font-weight: bold"
+                    id="timer-display"
+                >
+                    00:00
+                </div>
+                <div class="status-pill" id="status-display">PAUSED</div>
+            </div>
+
+            <div class="grid">
+                <button
+                    class="btn-focus"
+                    onclick="
+                        sendCommand('start-timer', {
+                            minutes: 25,
+                            mode: 'WORK',
+                        })
+                    "
+                >
+                    🔥 25m Focus
+                </button>
+                <button
+                    class="btn-focus"
+                    onclick="
+                        sendCommand('start-timer', {
+                            minutes: 50,
+                            mode: 'WORK',
+                        })
+                    "
+                >
+                    🔥 50m Focus
+                </button>
+                <button
+                    class="btn-break"
+                    onclick="
+                        sendCommand('start-timer', {
+                            minutes: 5,
+                            mode: 'BREAK',
+                        })
+                    "
+                >
+                    ☕ 5m Break
+                </button>
+                <button
+                    class="btn-break"
+                    onclick="
+                        sendCommand('start-timer', {
+                            minutes: 15,
+                            mode: 'BREAK',
+                        })
+                    "
+                >
+                    🥪 15m Break
+                </button>
+            </div>
+
+            <div class="grid" style="margin-top: 15px">
+                <button class="btn-pause" onclick="sendCommand('pause', {})">
+                    ⏸️ Pause
+                </button>
+                <button class="btn-resume" onclick="sendCommand('resume', {})">
+                    ▶️ Resume
+                </button>
+            </div>
+
+            <div class="card" style="margin-top: 15px">
+                <h2>Daily Goal Tracking</h2>
+
+                <div
+                    style="
+                        background: #333;
+                        height: 10px;
+                        border-radius: 5px;
+                        overflow: hidden;
+                        margin-bottom: 5px;
+                    "
+                >
+                    <div
+                        id="dash-goal-bar"
+                        style="
+                            width: 0%;
+                            height: 100%;
+                            background: #ff69b4;
+                            transition: width 0.5s;
+                        "
+                    ></div>
+                </div>
+                <div
+                    id="dash-goal-text"
+                    style="
+                        text-align: right;
+                        font-size: 0.8rem;
+                        color: #888;
+                        margin-bottom: 15px;
+                    "
+                >
+                    0 / 20
+                </div>
+
+                <div style="display: flex; gap: 10px">
+                    <input
+                        type="number"
+                        id="goal-input"
+                        placeholder="New Target"
+                        style="margin: 0"
+                    />
+                    <button
+                        class="btn-secondary"
+                        onclick="updateGoal()"
+                        style="margin: 0; width: auto; white-space: nowrap"
+                    >
+                        Set Goal
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 15px">
+                <h2>Overlay Settings</h2>
+
+                <div
+                    style="margin-bottom: 10px; font-size: 0.8rem; color: #666"
+                >
+                    THEME COLOR
+                </div>
+                <div class="theme-grid">
+                    <button
+                        id="btn-t-pink"
+                        class="btn-theme t-pink"
+                        onclick="sendCommand('set-theme', { theme: 'pink' })"
+                        title="Pink"
+                    ></button>
+                    <button
+                        id="btn-t-blue"
+                        class="btn-theme t-blue"
+                        onclick="sendCommand('set-theme', { theme: 'blue' })"
+                        title="Blue"
+                    ></button>
+                    <button
+                        id="btn-t-purple"
+                        class="btn-theme t-purple"
+                        onclick="sendCommand('set-theme', { theme: 'purple' })"
+                        title="Purple"
+                    ></button>
+                    <button
+                        id="btn-t-gold"
+                        class="btn-theme t-gold"
+                        onclick="sendCommand('set-theme', { theme: 'gold' })"
+                        title="Gold"
+                    ></button>
+                </div>
+
+                <div
+                    style="margin-bottom: 10px; font-size: 0.8rem; color: #666"
+                >
+                    SPACING / DENSITY
+                </div>
+                <div class="layout-grid">
+                    <button
+                        id="btn-l-comfortable"
+                        class="btn-layout"
+                        onclick="
+                            sendCommand('set-layout', { layout: 'comfortable' })
+                        "
+                    >
+                        Comfortable
+                    </button>
+                    <button
+                        id="btn-l-compact"
+                        class="btn-layout"
+                        onclick="
+                            sendCommand('set-layout', { layout: 'compact' })
+                        "
+                    >
+                        Compact
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 15px; border: 1px solid #333">
+                <h2>Session Management</h2>
+                <div
+                    style="font-size: 0.8rem; color: #888; margin-bottom: 10px"
+                >
+                    Keep the score, but wipe the board.
+                </div>
+
+                <button class="btn-danger" onclick="confirmClear()">
+                    🧹 Clear Active Tasks
+                </button>
+            </div>
+
+            <div class="card" style="margin-top: 20px">
+                <h2>Quick Task Add</h2>
+                <input
+                    type="text"
+                    id="task-input"
+                    placeholder="What are you working on?"
+                />
+                <button class="btn-secondary" onclick="addTask()">
+                    Add Task
+                </button>
+            </div>
+            <div class="card" style="margin-top: 15px">
+                <h2>Blocklist Manager</h2>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 10px">
+                    <input
+                        type="text"
+                        id="block-input"
+                        placeholder="Username to block"
+                        style="margin: 0"
+                    />
+                    <button
+                        class="btn-secondary"
+                        onclick="blockUser()"
+                        style="
+                            margin: 0;
+                            width: auto;
+                            background: #550000;
+                            color: white;
+                        "
+                    >
+                        Block
+                    </button>
+                </div>
+
+                <div id="block-container" class="block-list"></div>
+                <div
+                    id="empty-block-msg"
+                    style="
+                        color: #666;
+                        font-size: 0.8rem;
+                        margin-top: 10px;
+                        display: none;
+                    "
+                >
+                    No blocked users.
+                </div>
+            </div>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            let currentChannel = "";
+            let dashTotal = 0;
+            let dashGoal = 20;
+
+            async function login() {
+                const channel = document.getElementById("channel-input").value;
+                const password =
+                    document.getElementById("password-input").value;
+
+                const res = await fetch("/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ channel, password }),
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    currentChannel = channel;
+
+                    document.getElementById("header-username").innerText =
+                        `USER: ${currentChannel.toUpperCase()}`;
+
+                    const origin = data.publicUrl || window.location.origin;
+                    // Construct the Overlay URL dynamically based on where the dashboard is running
+                    const fullUrl = `${origin}/overlay?channel=${currentChannel}`;
+                    document.getElementById("overlay-url").value = fullUrl;
+
+                    document.getElementById("login-screen").style.display =
+                        "none";
+                    document.getElementById("dashboard-screen").style.display =
+                        "block";
+                    connectSocket();
+                } else {
+                    const err = document.getElementById("error-msg");
+                    err.innerText = data.message;
+                    err.style.display = "block";
+                }
+            }
+
+            async function sendCommand(action, payload) {
+                await fetch("/api/command", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action, payload }),
+                });
+            }
+
+            async function addTask() {
+                const rawInput = document.getElementById("task-input").value;
+                if (!rawInput) return;
+
+                let textToSend = rawInput;
+                let userToSend = null;
+
+                // Check for "User: Task" format
+                // We look for a colon and ensure it's not just part of a URL (http:)
+                if (rawInput.includes(":") && !rawInput.includes("http")) {
+                    const parts = rawInput.split(":");
+                    // Valid split: "username: do a thing"
+                    if (parts.length >= 2) {
+                        userToSend = parts[0].trim(); // "username", if it exists
+                        textToSend = parts.slice(1).join(":").trim(); // "task text", if the username exists
+                    }
+                }
+
+                await sendCommand("add-task", {
+                    text: textToSend,
+                    username: userToSend,
+                });
+
+                document.getElementById("task-input").value = "";
+            }
+
+            function setActiveTheme(theme) {
+                document
+                    .querySelectorAll(".btn-theme")
+                    .forEach((btn) => btn.classList.remove("active"));
+
+                const btn = document.getElementById(`btn-t-${theme}`);
+                if (btn) btn.classList.add("active");
+            }
+
+            function setActiveLayout(layout) {
+                document
+                    .querySelectorAll(".btn-layout")
+                    .forEach((btn) => btn.classList.remove("active"));
+                const btn = document.getElementById(`btn-l-${layout}`);
+                if (btn) btn.classList.add("active");
+            }
+
+            function connectSocket() {
+                const socket = io({ query: { channel: currentChannel } });
+
+                socket.on("init-tasks", (data) => {
+                    if (data.currentTheme) setActiveTheme(data.currentTheme);
+                    if (data.currentLayout) setActiveLayout(data.currentLayout);
+
+                    dashTotal = data.totalCompleted || 0;
+                    dashGoal = data.dailyGoal || 20;
+                    renderDashGoal();
+                    if (data.blocklist) renderBlocklist(data.blocklist);
+                });
+
+                socket.on("theme-update", (theme) => setActiveTheme(theme));
+                socket.on("layout-update", (layout) => setActiveLayout(layout));
+
+                socket.on("milestone-update", (data) => {
+                    dashTotal = data.total;
+                    renderDashGoal();
+                });
+
+                socket.on("goal-update", (data) => {
+                    dashGoal = data.dailyGoal;
+                    renderDashGoal();
+                });
+
+                socket.on("timer-update", (data) => {
+                    const mins = Math.floor(data.seconds / 60);
+                    const secs = data.seconds % 60;
+                    document.getElementById("timer-display").innerText =
+                        `${mins}:${secs.toString().padStart(2, "0")}`;
+
+                    const statusEl = document.getElementById("status-display");
+                    statusEl.innerText =
+                        data.status === "running" ? data.mode : "PAUSED";
+                    statusEl.style.color =
+                        data.mode === "WORK" ? "#ff69b4" : "#50fa7b";
+                });
+
+                socket.on("blocklist-update", (list) => {
+                    renderBlocklist(list);
+                });
+            }
+
+            async function confirmClear() {
+                if (
+                    confirm(
+                        "Are you sure? This will delete all ACTIVE tasks but keep the leaderboard.",
+                    )
+                ) {
+                    await sendCommand("clear-tasks", {});
+                }
+            }
+
+            function renderDashGoal() {
+                const percentage = Math.min(
+                    100,
+                    Math.floor((dashTotal / dashGoal) * 100),
+                );
+                document.getElementById("dash-goal-bar").style.width =
+                    `${percentage}%`;
+                document.getElementById("dash-goal-text").innerText =
+                    `${dashTotal} / ${dashGoal} (${percentage}%)`;
+
+                document.getElementById("goal-input").placeholder = dashGoal;
+            }
+
+            async function updateGoal() {
+                const val = document.getElementById("goal-input").value;
+                if (!val) return;
+                await sendCommand("set-goal", { goal: val });
+                document.getElementById("goal-input").value = ""; // Clear input
+            }
+
+            // Blocklist section
+            function renderBlocklist(list) {
+                const container = document.getElementById("block-container");
+                const emptyMsg = document.getElementById("empty-block-msg");
+
+                container.innerHTML = "";
+
+                if (!list || list.length === 0) {
+                    emptyMsg.style.display = "block";
+                    return;
+                }
+
+                emptyMsg.style.display = "none";
+
+                list.forEach((user) => {
+                    const pill = document.createElement("div");
+                    pill.className = "block-pill";
+                    pill.innerHTML = `
+                                    <span>${user}</span>
+                                    <button onclick="unblockUser('${user}')" title="Unblock">×</button>
+                                `;
+                    container.appendChild(pill);
+                });
+            }
+
+            async function blockUser() {
+                const input = document.getElementById("block-input");
+                const username = input.value.trim();
+                if (!username) return;
+
+                await sendCommand("block-user", { username });
+                input.value = "";
+            }
+
+            async function unblockUser(username) {
+                if (confirm(`Unblock ${username}?`)) {
+                    await sendCommand("unblock-user", { username });
+                }
+            }
+
+            function copyUrl() {
+                const copyText = document.getElementById("overlay-url");
+                copyText.select();
+                copyText.setSelectionRange(0, 99999);
+                navigator.clipboard.writeText(copyText.value).then(() => {
+                    const btn = document.querySelector(".btn-copy");
+                    const original = btn.innerText;
+                    btn.innerText = "COPIED!";
+                    setTimeout(() => (btn.innerText = original), 2000);
+                });
+            }
+        </script>
+    </body>
+</html>
