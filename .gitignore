@@ -1,0 +1,5 @@
+node_modules
+data
+channels.json
+tokens.json
+.env
