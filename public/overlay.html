@@ -1,0 +1,747 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Twitch Task Overlay</title>
+        <script src="/socket.io/socket.io.js"></script>
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@500&display=swap");
+
+            * {
+                box-sizing: border-box;
+            }
+
+            /* Modular view */
+
+            body.view-timer #leaderboard,
+            body.view-timer #viewport {
+                display: none !important;
+            }
+
+            body.view-tasks #timer-box,
+            body.view-tasks #leaderboard {
+                display: none !important;
+            }
+
+            body.view-leaderboard #timer-box,
+            body.view-leaderboard #viewport {
+                display: none !important;
+            }
+
+            /* Adjust container width for standalone views if needed */
+            body.view-tasks #container,
+            body.view-leaderboard #container {
+                width: 100%; /* Let OBS decide the width */
+                max-width: 400px;
+            }
+
+            /* Layout Presets */
+            body.layout-comfortable #container {
+                gap: 20px;
+            }
+            body.layout-compact #container {
+                gap: 8px;
+            }
+
+            /* Compact Overrides */
+            body.layout-compact #timer-box {
+                padding: 10px 15px;
+                margin-bottom: 5px;
+                border-radius: 12px;
+            }
+            body.layout-compact #time-numbers {
+                font-size: 2.5rem;
+            }
+            body.layout-compact #leaderboard {
+                padding: 8px 12px;
+                border-radius: 10px;
+            }
+            body.layout-compact .task-card {
+                padding: 8px 12px;
+                border-radius: 8px;
+            }
+            body.layout-compact .leader-row {
+                padding: 4px 0;
+                font-size: 0.9rem;
+            }
+
+            /* Base Layout */
+            body {
+                font-family: "Quicksand", sans-serif;
+                color: white;
+                background: transparent;
+                overflow: hidden;
+                margin: 0;
+                padding: 10px;
+                display: flex;
+                justify-content: center;
+            }
+
+            #container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                width: 400px;
+                margin: 0 auto;
+                gap: 20px;
+                transition: gap 0.3s ease;
+            }
+
+            /* Timer Box */
+            #timer-box {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(8px);
+                border-radius: 20px;
+                padding: 20px;
+                margin-bottom: 15px;
+                border: 2px solid transparent;
+                transition: all 0.5s ease;
+            }
+
+            #mode-label {
+                text-align: center;
+                width: 100%;
+                font-size: clamp(1rem, 5vw, 1.3rem);
+                letter-spacing: 6px;
+                font-weight: bold;
+                transition: color 0.5s ease;
+            }
+
+            #time-numbers {
+                text-align: center;
+                width: 100%;
+                font-size: clamp(3rem, 15vw, 4.5rem);
+                font-weight: bold;
+                line-height: 1;
+                margin: 5px 0;
+                transition: color 0.5s ease;
+            }
+
+            /* Stats & Goal */
+            .stats-container {
+                display: flex;
+                width: 100%;
+                gap: 10px;
+                margin-top: 15px;
+                justify-content: center;
+            }
+            .stat-badge {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                font-size: clamp(0.6rem, 2.5vw, 0.75rem);
+                font-weight: bold;
+                background: rgba(255, 255, 255, 0.05);
+                padding: 8px 5px;
+                border-radius: 12px;
+                letter-spacing: 1px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                min-height: 40px;
+            }
+
+            .goal-container {
+                width: 100%;
+                margin-top: 15px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .progress-track {
+                width: 100%;
+                height: 10px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 5px;
+                overflow: hidden;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            .progress-bar {
+                height: 100%;
+                width: 0%;
+                background: var(--work-color);
+                box-shadow: 0 0 10px var(--work-color);
+                transition:
+                    width 1s ease-in-out,
+                    background 0.5s ease;
+            }
+            .goal-text {
+                font-size: 0.65rem;
+                font-weight: bold;
+                margin-top: 5px;
+                letter-spacing: 1px;
+                opacity: 0.8;
+            }
+
+            /* Victory Animation */
+            @keyframes goalPulse {
+                0% {
+                    box-shadow: 0 0 10px var(--work-color);
+                    transform: scale(1);
+                }
+                50% {
+                    box-shadow: 0 0 30px var(--work-color);
+                    transform: scale(1.02);
+                }
+                100% {
+                    box-shadow: 0 0 10px var(--work-color);
+                    transform: scale(1);
+                }
+            }
+            .goal-reached {
+                animation: goalPulse 1.5s infinite ease-in-out !important;
+                border-color: #fff !important;
+            }
+
+            /* Task Cards */
+            #viewport {
+                width: 100%;
+                height: 400px;
+                overflow: hidden;
+                position: relative;
+                mask-image: linear-gradient(
+                    to bottom,
+                    black 90%,
+                    transparent 100%
+                );
+            }
+            #task-container {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                width: 100%;
+                transition: transform 0.6s cubic-bezier(0.45, 0, 0.55, 1);
+            }
+            #task-container:not(:empty) {
+                padding-top: 10px;
+            }
+
+            .task-card {
+                width: 100%;
+                background: rgba(0, 0, 0, 0.75);
+                backdrop-filter: blur(10px);
+                border-radius: 15px;
+                padding: 12px;
+                border-left: 5px solid var(--work-color);
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                transition: all 1s ease;
+            }
+            .task-user-header {
+                font-size: 0.75rem;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                color: var(--work-color);
+                margin-bottom: 4px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                padding-bottom: 4px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .user-task-count {
+                background: rgba(255, 255, 255, 0.15);
+                color: var(--work-color);
+                font-size: 0.7rem;
+                padding: 2px 8px;
+                border-radius: 10px;
+                border: 1px solid var(--work-color);
+                box-shadow: 0 0 5px var(--work-color);
+                font-weight: 900;
+            }
+            .task-row {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                animation: taskEntry 0.3s ease-out forwards;
+            }
+            .task-badge {
+                background: var(--work-color);
+                color: #000;
+                font-size: 0.65rem;
+                font-weight: 900;
+                padding: 2px 5px;
+                border-radius: 4px;
+                min-width: 18px;
+                text-align: center;
+                margin-top: 2px;
+            }
+            .task-text {
+                font-size: 1rem;
+                line-height: 1.3;
+                color: #eee;
+            }
+            .task-row.completed {
+                opacity: 0.5;
+                text-decoration: line-through;
+                filter: grayscale(80%);
+            }
+            .task-row.completed .task-badge {
+                background: var(--break-color);
+            }
+
+            /* Leaderboard */
+            #leaderboard {
+                width: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(5px);
+                border-radius: 15px;
+                padding: 15px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .leaderboard-title {
+                font-size: 0.7rem;
+                text-align: center;
+                letter-spacing: 2px;
+                opacity: 0.6;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+            }
+            .leader-row {
+                display: flex;
+                justify-content: space-between;
+                font-size: 0.85rem;
+                padding: 4px 10px;
+                border-radius: 5px;
+                margin-bottom: 2px;
+                animation: taskEntry 0.5s ease backwards;
+            }
+            .leader-row:first-child {
+                background: rgba(255, 255, 255, 0.1);
+                font-weight: bold;
+                color: var(--work-color);
+                border-left: 3px solid var(--work-color);
+            }
+
+            /* Animations */
+            @keyframes taskEntry {
+                0% {
+                    opacity: 0;
+                    transform: translateY(20px) scale(0.95);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                }
+            }
+            @keyframes urgentPulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.6;
+                }
+            }
+            .high-workload {
+                animation: urgentPulse 2s infinite;
+                background: var(--work-color);
+                color: #000;
+            }
+
+            /* Theme Engine */
+            :root {
+                --work-color: #ff69b4;
+                --break-color: #50fa7b;
+            }
+            body.theme-blue {
+                --work-color: #00d2ff;
+                --break-color: #98ffed;
+            }
+            body.theme-purple {
+                --work-color: #bd93f9;
+                --break-color: #ff79c6;
+            }
+            body.theme-gold {
+                --work-color: #ffb86c;
+                --break-color: #f1fa8c;
+            }
+            body.theme-green {
+                --work-color: #39ff14;
+                --break-color: #00ffff;
+            }
+
+            .work-mode #timer-box {
+                border-color: var(--work-color);
+                box-shadow:
+                    0 0 10px rgba(0, 0, 0, 0.5),
+                    inset 0 0 5px var(--work-color);
+            }
+            .work-mode #mode-label,
+            .work-mode #time-numbers,
+            .work-mode .user-task-count {
+                color: var(--work-color);
+            }
+            .work-mode .task-card {
+                border-left-color: var(--work-color);
+            }
+
+            .break-mode #timer-box {
+                border-color: var(--break-color);
+                box-shadow:
+                    0 0 10px rgba(0, 0, 0, 0.5),
+                    inset 0 0 5px var(--break-color);
+            }
+            .break-mode #mode-label,
+            .break-mode #time-numbers {
+                color: var(--break-color);
+            }
+            .break-mode .task-card {
+                border-left-color: var(--break-color);
+            }
+
+            .work-mode .progress-bar {
+                background: var(--work-color);
+                box-shadow: 0 0 10px var(--work-color);
+            }
+            .break-mode .progress-bar {
+                background: var(--break-color);
+                box-shadow: 0 0 10px var(--break-color);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <div id="timer-box">
+                <div id="mode-label">READY</div>
+                <div id="time-numbers">25:00</div>
+                <div class="stats-container">
+                    <div id="in-progress-counter" class="stat-badge">
+                        IN PROGRESS: 0
+                    </div>
+                    <div id="milestone-counter" class="stat-badge">
+                        COMPLETED: 0
+                    </div>
+                </div>
+                <div class="goal-container">
+                    <div class="progress-track">
+                        <div id="goal-bar" class="progress-bar"></div>
+                    </div>
+                    <div id="goal-text" class="goal-text">GOAL: 0/20 (0%)</div>
+                </div>
+            </div>
+
+            <div id="leaderboard">
+                <div class="leaderboard-title">Top Contributors</div>
+                <div id="leader-list"></div>
+            </div>
+
+            <div id="viewport">
+                <div id="task-container"></div>
+            </div>
+        </div>
+
+        <script>
+            // URL Logic for Views
+            const urlParams = new URLSearchParams(window.location.search);
+            const channelName = urlParams.get("channel") || "skitch000";
+            const viewMode = urlParams.get("view"); // "timer", "tasks", "leaderboard"
+
+            if (viewMode) {
+                document.body.classList.add(`view-${viewMode}`);
+                console.log(`Overlay loaded in View Mode: ${viewMode}`);
+            }
+
+            const socket = io({ query: { channel: channelName } });
+
+            const timeNumbers = document.getElementById("time-numbers");
+            const modeLabel = document.getElementById("mode-label");
+            const taskContainer = document.getElementById("task-container");
+            const milestoneDisplay =
+                document.getElementById("milestone-counter");
+            const progressDisplay = document.getElementById(
+                "in-progress-counter",
+            );
+            const goalBar = document.getElementById("goal-bar");
+            const goalText = document.getElementById("goal-text");
+            const leaderList = document.getElementById("leader-list");
+
+            let currentTotal = 0;
+            let currentGoal = 20;
+            let localTimerInterval = null;
+            let carouselInterval = null;
+
+            function applyTheme(theme) {
+                document.body.classList.forEach((cls) => {
+                    if (cls.startsWith("theme-"))
+                        document.body.classList.remove(cls);
+                });
+                document.body.classList.add(`theme-${theme || "pink"}`);
+            }
+
+            function updateGoalUI() {
+                const percentage = Math.min(
+                    100,
+                    Math.floor((currentTotal / currentGoal) * 100),
+                );
+                goalBar.style.width = `${percentage}%`;
+                goalText.innerText = `GOAL: ${currentTotal}/${currentGoal} (${percentage}%)`;
+
+                const timerBox = document.getElementById("timer-box");
+                if (timerBox.style.display !== "none") {
+                    if (percentage >= 100) {
+                        timerBox.classList.add("goal-reached");
+                        goalBar.style.boxShadow = "0 0 20px #fff";
+                    } else {
+                        timerBox.classList.remove("goal-reached");
+                        goalBar.style.boxShadow = "";
+                    }
+                }
+            }
+
+            function updateLeaderboardUI(leaderboard) {
+                const leaderboardEl = document.getElementById("leaderboard");
+                if (!leaderboard || leaderboard.length === 0) {
+                    leaderboardEl.style.display = "none";
+                    return;
+                }
+
+                if (
+                    !document.body.classList.contains("view-timer") &&
+                    !document.body.classList.contains("view-tasks")
+                ) {
+                    leaderboardEl.style.display = "block";
+                }
+
+                leaderList.innerHTML = "";
+                leaderboard.forEach((user, index) => {
+                    const row = document.createElement("div");
+                    row.className = "leader-row";
+                    const rank = index + 1;
+                    row.innerHTML = `
+                        <span style="display:flex; gap:8px;">
+                            <span style="opacity:0.5">#${rank}</span>
+                            <span>${user.name}</span>
+                        </span>
+                        <span>${user.count}</span>
+                    `;
+                    leaderList.appendChild(row);
+                });
+            }
+
+            function renderUserCard(user, tasks) {
+                const userKey = user.toLowerCase();
+                let card = document.getElementById(`card-${userKey}`);
+
+                if (!tasks || tasks.length === 0) {
+                    if (card) card.remove();
+                    return;
+                }
+
+                const activeCount = tasks.filter((t) => !t.completed).length;
+
+                if (!card) {
+                    card = document.createElement("div");
+                    card.id = `card-${userKey}`;
+                    card.className = "task-card";
+                    taskContainer.appendChild(card);
+                }
+
+                card.innerHTML = `
+                    <div class="task-user-header">
+                        <span>${user}</span>
+                        <span class="user-task-count ${activeCount > 3 ? "high-workload" : ""}">
+                            ${activeCount} ACTIVE
+                        </span>
+                    </div>
+                    ${tasks
+                        .map(
+                            (task) => `
+                        <div class="task-row ${task.completed ? "completed" : ""}">
+                            <span class="task-badge">${task.completed ? "✓" : task.id}</span>
+                            <span class="task-text">${task.text}</span>
+                        </div>
+                    `,
+                        )
+                        .join("")}
+                `;
+            }
+
+            function startLocalTick() {
+                if (localTimerInterval) clearInterval(localTimerInterval);
+                localTimerInterval = setInterval(() => {
+                    let timeParts = timeNumbers.innerText.split(":");
+                    if (timeParts.length < 2) return;
+                    let totalSecs =
+                        parseInt(timeParts[0]) * 60 + parseInt(timeParts[1]);
+                    if (totalSecs > 0) {
+                        totalSecs--;
+                        const mins = Math.floor(totalSecs / 60);
+                        const secs = totalSecs % 60;
+                        timeNumbers.innerText = `${mins}:${secs.toString().padStart(2, "0")}`;
+                    }
+                }, 1000);
+            }
+
+            function checkCarousel() {
+                // If we are in "View Timer" or "View Leaderboard" mode, don't run carousel
+                const viewport = document.getElementById("viewport");
+                if (viewport.offsetParent === null) return;
+
+                if (taskContainer.offsetHeight > viewport.offsetHeight) {
+                    if (!carouselInterval) startCarousel();
+                } else {
+                    if (carouselInterval) clearInterval(carouselInterval);
+                    carouselInterval = null;
+                    taskContainer.style.transform = "translateY(0)";
+                }
+            }
+
+            function startCarousel() {
+                if (carouselInterval) clearInterval(carouselInterval);
+                carouselInterval = setInterval(() => {
+                    const viewport = document.getElementById("viewport");
+                    if (viewport.offsetParent === null) return;
+
+                    const cards = taskContainer.children;
+                    if (
+                        taskContainer.offsetHeight > viewport.offsetHeight &&
+                        cards.length > 1
+                    ) {
+                        const firstCard = cards[0];
+                        const cardHeight = firstCard.offsetHeight + 12;
+
+                        taskContainer.style.transition =
+                            "transform 0.6s ease-in-out";
+                        taskContainer.style.transform = `translateY(-${cardHeight}px)`;
+
+                        setTimeout(() => {
+                            taskContainer.style.transition = "none";
+                            taskContainer.style.transform = "translateY(0)";
+                            taskContainer.appendChild(firstCard);
+                        }, 600);
+                    }
+                }, 5000);
+            }
+
+            socket.on("init-tasks", (data) => {
+                console.log("Received Init Data:", data);
+
+                taskContainer.innerHTML = "";
+                if (data.activeTasks) {
+                    Object.entries(data.activeTasks).forEach(([user, tasks]) =>
+                        renderUserCard(user, tasks),
+                    );
+                }
+
+                // Stats
+                const totalInProgress = data.activeTasks
+                    ? Object.values(data.activeTasks).reduce(
+                          (acc, tasks) => acc + tasks.length,
+                          0,
+                      )
+                    : 0;
+                progressDisplay.innerText = `IN PROGRESS: ${totalInProgress}`;
+
+                currentTotal = data.totalCompleted || 0;
+                milestoneDisplay.innerText = `COMPLETED: ${currentTotal}`;
+
+                currentGoal = data.dailyGoal || 20;
+                updateGoalUI();
+
+                applyTheme(data.currentTheme);
+
+                // Leaderboard
+                if (data.userStats) {
+                    const sorted = Object.entries(data.userStats)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 3)
+                        .map(([name, count]) => ({ name, count }));
+                    updateLeaderboardUI(sorted);
+                } else {
+                    updateLeaderboardUI([]);
+                }
+
+                if (data.currentLayout) {
+                    document.body.classList.remove(
+                        "layout-compact",
+                        "layout-comfortable",
+                    );
+                    document.body.classList.add(`layout-${data.currentLayout}`);
+                }
+
+                setTimeout(checkCarousel, 500);
+            });
+
+            socket.on("refresh-tasks", (data) => {
+                renderUserCard(data.user, data.tasks);
+                setTimeout(checkCarousel, 100);
+            });
+
+            socket.on("timer-update", (data) => {
+                const mins = Math.floor(data.seconds / 60);
+                const secs = data.seconds % 60;
+                timeNumbers.innerText = `${mins}:${secs.toString().padStart(2, "0")}`;
+
+                modeLabel.innerText =
+                    data.mode === "WORK" ? "• FOCUS •" : "• BREAK •";
+                document.body.classList.toggle(
+                    "work-mode",
+                    data.mode === "WORK",
+                );
+                document.body.classList.toggle(
+                    "break-mode",
+                    data.mode !== "WORK",
+                );
+
+                if (data.status === "running" && !localTimerInterval)
+                    startLocalTick();
+                if (data.status !== "running") {
+                    clearInterval(localTimerInterval);
+                    localTimerInterval = null;
+                }
+            });
+
+            socket.on("leaderboard-update", (data) => {
+                updateLeaderboardUI(data.leaderboard);
+            });
+
+            socket.on("milestone-update", (data) => {
+                currentTotal = data.total;
+                milestoneDisplay.innerText = `COMPLETED: ${currentTotal}`;
+                updateGoalUI();
+            });
+
+            socket.on("goal-update", (data) => {
+                currentGoal = data.dailyGoal;
+                updateGoalUI();
+            });
+
+            socket.on("in-progress-update", (data) => {
+                progressDisplay.innerText = `IN PROGRESS: ${data.count}`;
+            });
+
+            socket.on("theme-update", (theme) => applyTheme(theme));
+
+            socket.on("layout-update", (layout) => {
+                document.body.classList.remove(
+                    "layout-compact",
+                    "layout-comfortable",
+                );
+                document.body.classList.add(`layout-${layout}`);
+            });
+
+            socket.on("timer-end", () => {
+                timeNumbers.innerText = "DONE!";
+                new Audio(
+                    "https://actions.google.com/sounds/v1/alarms/beep_short.ogg",
+                ).play();
+            });
+
+            socket.on("clear-board-ui", () => {
+                taskContainer.innerHTML = "";
+                if (carouselInterval) {
+                    clearInterval(carouselInterval);
+                    carouselInterval = null;
+                }
+                taskContainer.style.transform = "translateY(0)";
+            });
+        </script>
+    </body>
+</html>
