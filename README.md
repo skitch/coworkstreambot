@@ -2,7 +2,7 @@
 
 This is a pomodoro timer / co-work chat bot for twitch
 
-## Help
+## Help (can be done by anyone)
 `!coworkhelp`
 
 this takes the requester into account and only shows commands they can use
