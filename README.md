@@ -20,6 +20,14 @@ edits the specified task number with the new text
 
 marks the numbered task as complete, removes it from the list, increments the goal progress, completed counter, and leaderboard
 
+`!clear/!drop <task number>`
+
+removes the task from the list, without marking it as complete
+
+`!mytasks/!tasksummary`
+
+returns a list of that user's tasks
+
 ## Timer (only mods and the streamer can run these)
 
 `!focus <minutes>`
