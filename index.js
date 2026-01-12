@@ -711,7 +711,16 @@ const CoreActions = {
   // Visuals
   setTheme: (chanName, theme) => {
     const state = channelStates[chanName];
-    const validThemes = ["pink", "blue", "purple", "gold"];
+    const validThemes = [
+      "pink",
+      "blue",
+      "purple",
+      "gold",
+      "green",
+      "teal",
+      "orange",
+      "red",
+    ];
 
     if (validThemes.includes(theme)) {
       state.currentTheme = theme;
