@@ -65,6 +65,13 @@
             }
 
             /* Base Layout */
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+                overflow: hidden;
+            }
+
             body {
                 font-family: "Quicksand", sans-serif;
                 color: white;
@@ -80,10 +87,15 @@
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                width: 400px;
+                width: 100%;
                 margin: 0 auto;
                 gap: 20px;
                 transition: gap 0.3s ease;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                box-sizing: border-box;
+                padding: 20px;
             }
 
             /* Timer Box */
@@ -200,7 +212,6 @@
             /* Task Cards */
             #viewport {
                 width: 100%;
-                height: 400px;
                 overflow: hidden;
                 position: relative;
                 mask-image: linear-gradient(
@@ -208,7 +219,15 @@
                     black 90%,
                     transparent 100%
                 );
+                flex-grow: 1;
+                overflow-y: auto;
+                scrollbar-width: none;
             }
+
+            #viewport::-webkit-scrollbar {
+                display: none;
+            }
+
             #task-container {
                 display: flex;
                 flex-direction: column;
@@ -546,7 +565,7 @@
                 card.innerHTML = `
                     <div class="task-user-header">
                         <span>${user}</span>
-                        <span class="user-task-count ${activeCount > 3 ? "high-workload" : ""}">
+                        <span class="user-task-count ${activeCount > 5 ? "high-workload" : ""}">
                             ${activeCount} ACTIVE
                         </span>
                     </div>
