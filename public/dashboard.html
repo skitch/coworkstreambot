@@ -127,6 +127,7 @@
                 transform: scale(1.1);
             }
 
+            /* Themes */
             .t-pink {
                 background: #ff69b4;
             }
@@ -138,6 +139,18 @@
             }
             .t-gold {
                 background: #ffb86c;
+            }
+            .t-green {
+                background: #309c3b;
+            }
+            .t-teal {
+                background: #1abc9c;
+            }
+            .t-orange {
+                background: #e67e22;
+            }
+            .t-red {
+                background: #e74c3c;
             }
 
             /* Layout Buttons */
@@ -472,6 +485,31 @@
                         class="btn-theme t-gold"
                         onclick="sendCommand('set-theme', { theme: 'gold' })"
                         title="Gold"
+                    ></button>
+                    <button
+                        id="btn-t-green"
+                        class="btn-theme t-green"
+                        onclick="sendCommand('set-theme', { theme: 'green' })"
+                        title="Green"
+                    ></button>
+                    <button
+                        id="btn-t-teal"
+                        class="btn-theme t-teal"
+                        onclick="sendCommand('set-theme', { theme: 'teal' })"
+                        title="Teal"
+                    ></button>
+                    <button
+                        id="btn-t-orange"
+                        class="btn-theme t-orange"
+                        onclick="sendCommand('set-theme', { theme: 'orange' })"
+                        title="Orange"
+                    ></button>
+
+                    <button
+                        id="btn-t-red"
+                        class="btn-theme t-red"
+                        onclick="sendCommand('set-theme', { theme: 'red' })"
+                        title="Red"
                     ></button>
                 </div>
 
