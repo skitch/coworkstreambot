@@ -131,7 +131,7 @@ async function startBot() {
       // !help:
       if (command === "!coworkhelp") {
         // 1. Base commands everyone can see
-        let helpMessage = `🤖 [VIEWER] !task <task text>, !edit <task number> <new task text>, !done <task number>`;
+        let helpMessage = `🤖 [VIEWER] !task <task text>, !edit <task number> <new task text>, !done <task number>, !clear/!drop <task number>, !mytasks/!tasksummary`;
 
         // 2. Add Mod/Streamer commands if user is a mod/streamer
         if (isMod) {
@@ -166,6 +166,29 @@ async function startBot() {
         } else {
           botLog(channel, `⛔ Usage: !edit <id> <new text>`);
         }
+      }
+
+      // !clear <id>
+      if (command === "!clear" || command === "!drop") {
+        if (args[0]) {
+          const msg = CoreActions.clearSpecificTask(
+            chanName,
+            username,
+            args[0],
+          );
+          if (msg) botLog(channel, msg);
+        } else {
+          botLog(
+            channel,
+            `@${username} Usage: !clear <task number> (e.g. !clear 2)`,
+          );
+        }
+      }
+
+      // !tasksummary / !mytasks
+      if (command === "!tasksummary" || command === "!mytasks") {
+        const msg = CoreActions.getUserSummary(chanName, username);
+        if (msg) client.say(channel, msg);
       }
 
       // !focus / !break
@@ -798,6 +821,73 @@ const CoreActions = {
     io.to(chanName).emit("in-progress-update", { count: totalInProgress });
 
     return true;
+  },
+
+  // list all of a user's tasks
+  getUserSummary: (chanName, username) => {
+    const state = channelStates[chanName];
+    if (!state) return null;
+
+    const userTasks = state.activeTasks[username];
+
+    // 1. Check if they have any tasks at all
+    if (!userTasks || userTasks.length === 0) {
+      return `@${username}, you don't have any tasks tracked right now.`;
+    }
+
+    // 2. Filter for only INCOMPLETE tasks
+    const pending = userTasks.filter((t) => !t.completed);
+
+    if (pending.length === 0) {
+      return `@${username}, you're all caught up! No active tasks.`;
+    }
+
+    // 3. Format the list: "[1] Do the thing | [3] Do the other thing"
+    const listString = pending.map((t) => `[#${t.id}] ${t.text}`).join(" | ");
+
+    return `@${username}, here is your to-do list: ${listString}`;
+  },
+
+  // clear a task instead of completing it
+  clearSpecificTask: (chanName, username, targetId) => {
+    const state = channelStates[chanName];
+    if (!state) return null;
+
+    const userTasks = state.activeTasks[username];
+    if (!userTasks) return null;
+
+    const id = parseInt(targetId);
+    if (isNaN(id)) return null;
+
+    const taskIndex = userTasks.findIndex((t) => t.id === id);
+
+    if (taskIndex !== -1) {
+      const removedTaskText = userTasks[taskIndex].text;
+
+      // 1. Remove the task
+      userTasks.splice(taskIndex, 1);
+
+      // 2. Re-index remaining tasks to prevent ID collisions
+      userTasks.forEach((t, i) => (t.id = i + 1));
+
+      saveChannelData(chanName);
+
+      // 3. Update UI
+      io.to(chanName).emit("refresh-tasks", {
+        user: username,
+        tasks: userTasks,
+      });
+
+      const totalInProgress = Object.values(state.activeTasks).reduce(
+        (acc, val) => acc + val.length,
+        0,
+      );
+      io.to(chanName).emit("in-progress-update", { count: totalInProgress });
+
+      return `🗑️ Removed task #${id}: "${removedTaskText}"`;
+    } else {
+      return `⚠️ Could not find task #${id} to remove.`;
+    }
   },
 };
 
